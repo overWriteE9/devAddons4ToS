@@ -41,6 +41,7 @@ end
 --グローバル記憶用変数
 local eTeamNames = {};
 local redrawFlag = false;
+local shutChat = false;
 
 --lua読み込み時のメッセージ
 CHAT_SYSTEM(string.format("%s.lua is loaded", addonName));
@@ -112,7 +113,9 @@ function TBLEW_MAIN()
   TBLEW_INIT_FRAME(frame);
   
   --チャットで報告機能
-  TBLEW_CHATREPORT();
+  if redrawFlag == false then
+    TBLEW_CHATREPORT();
+  end
 end
 
 --フレーム描画
@@ -178,13 +181,17 @@ function TBLEW_INIT_FRAME(frame)
   
   --PVPゲームリストが１つもない場合は何もしない
   if session.worldPVP.GetPublicGameCount() < 1 then
+    shutChat = true;
     return;
+  else
+    shutChat = false;
   end
   
   --自分の名前(チーム名)のチェック用
   local myName = GETMYFAMILYNAME();
   local myTeam = 0;
   local enemyTeam = 0;
+  eTeamNames = {};
   
   --PVPゲームリストの上から参照し、自分の対戦相手を確認する
   local cnt = session.worldPVP.GetPublicGameCount();
@@ -233,9 +240,6 @@ function TBLEW_INIT_FRAME(frame)
     if myTeam ~= 0 then
       --相手チームの情報のみ参照
       enemyTeam = 3 - myTeam;
-      
-      --相手チームのチーム名保存配列初期化
-      eTeamNames = {};
 
       if g.settings.debuggy then
         CHAT_SYSTEM(string.format("team : my = %d ene = %d", myTeam, enemyTeam));
@@ -320,6 +324,11 @@ function TBLEW_CHATREPORT()
   if #eTeamNames < 1 or g.settings.chatReport == false then
     return;
   end
+  
+  --描画のみで処理が中断されている場合は何もしない
+  if shutChat == true then
+    return;
+  end
 
   --チャットで送信する文字列配列
   local chatStrs = {};
@@ -345,18 +354,14 @@ function TBLEW_CHATREPORT()
 
   --チャット送信(Party)
   if #eTeamNames <= 3 then
-    ui.Chat(string.format(
-      "/p 【対戦相手の情報】{nl}%s{nl}%s{nl}%s",
-      chatStrs[1],
-      chatStrs[2],
-      chatStrs[3]
-    ));
+    ui.Chat("/p " .. chatStrs[1]);
+    ui.Chat("/p " .. chatStrs[2]);
+    ui.Chat("/p " .. chatStrs[3]);
+    
   elseif #eTeamNames > 3 then
-    local commitedChatStr = "/p 【対戦相手の情報】{nl}";
-    for i = 0, #eTeamNames do
-      commitedChatStr = commitedChatStr .. chatStrs[i] .. "{nl}";
+    for i = 1, #eTeamNames do
+      ui.Chat("/p " .. chatStrs[i]);
     end
-    ui.Chat(commitedChatStr);
   end
 
 end
