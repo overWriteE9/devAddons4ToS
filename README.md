@@ -6,6 +6,14 @@
 「_xxxxx-☃-vX.X.ipf」に名前を変えてToSクライアントを終了させてから  
 ToSのdataフォルダ(addonフォルダではない)に突っ込んで、ToS起動
 
+「xxxxx_crypted.ipf」がないなら「_xxxxx-☃-vX.X.ipf」があると思うので  
+それをToSのdataフォルダ(addonフォルダではない)に突っ込んで、ToS起動するだけ
+
+**注意**
+Tosのaddonsフォルダに、アドオン名小文字(TBLEWだったら tblew )のフォルダを作らないと  
+settings.jsonが保存されないので、起動するたびに位置調整しなくちゃならない  
+(addonManagerはインストール時にこの作業をやってくれてる)
+
 ***
 
 ### TBLEW (TBL enemy who?)
