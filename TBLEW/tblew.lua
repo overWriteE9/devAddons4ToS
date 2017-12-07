@@ -1,7 +1,7 @@
 --アドオン名（大文字）
 local addonName = "TBLEW";
 local addonNameLower = string.lower(addonName);
-local addonVersion = "v0.4b";
+local addonVersion = "v0.4c";
 --作者名
 local author = "overWrite_e9";
 
@@ -162,13 +162,13 @@ function TBLEW_INIT_FRAME(frame)
   rtTitle:SetText("{s19}{ds}TBL. 対戦相手の情報{/}{/}");
   rtTeamName[1]:SetText("{s17}{ol}TeamNameチーム名_１{/}{/}");
   rtLvRank[1]:SetText("{s17}LV. 999, Rank. {#EF2244}999{/}位{/}");
-  rtMaxHP[1]:SetText("{s17}Std HP = {#FF9900}262144{/}{/}");
+  --rtMaxHP[1]:SetText("{s17}Std HP = {#FF9900}262144{/}{/}");
   rtTeamName[2]:SetText("{s17}{ol}TeamNameチーム名_２{/}{/}");
   rtLvRank[2]:SetText("{s17}{#556655}LV. ∞, ランク圏外{/}{/}");
-  rtMaxHP[2]:SetText("{s17}Std HP = {#FF9900}65536{/}{/}");
+  --rtMaxHP[2]:SetText("{s17}Std HP = {#FF9900}65536{/}{/}");
   rtTeamName[3]:SetText("{s17}{ol}TeamNameチーム名_３{/}{/}");
   rtLvRank[3]:SetText("{s17}{#556655}LV. ∞, ランク圏外{/}{/}");
-  rtMaxHP[3]:SetText("{s17}Std HP = {#FF9900}12768{/}{/}");
+  --rtMaxHP[3]:SetText("{s17}Std HP = {#FF9900}12768{/}{/}");
   rtInformation:SetText("{s15}" .. addonName .. " " .. addonVersion .. "{nl}yourTeamName: " .. GETMYFAMILYNAME() .. "{/}");
   
   --描画のみのフラグが立っていたらここまでで終了(possetの場合はフラグを解除しない)
@@ -295,16 +295,16 @@ function TBLEW_INIT_FRAME(frame)
         
       end
       
-      --相手のMaxHPを取得して表示する
-      local teamInfo = session.mission.GetTeam(enemyTeam);
-      local teamList = teamInfo:GetPCList();
-      local arycnt = teamList:size();
-      for i = 0, arycnt - 1 do
-        local pcInfo = teamList:at(i);
-        local ii = i + 1;
-        rtMaxHP[ii]:SetText("{s17}Std HP = {#FF9900}" .. pcInfo.mhp .. "{/}{/}");
-        eTeamNames[ii][5] = pcInfo.mhp;
-      end
+      --相手のMaxHPを取得して表示する(順番が毎回バラバラなのでキャラと結びつけることができない)
+      --local teamInfo = session.mission.GetTeam(enemyTeam);
+      --local teamList = teamInfo:GetPCList();
+      --local arycnt = teamList:size();
+      --for i = 0, arycnt - 1 do
+      --  local pcInfo = teamList:at(i);
+      --  local ii = i + 1;
+      --  rtMaxHP[ii]:SetText("{s17}Std HP = {#FF9900}" .. pcInfo.mhp .. "{/}{/}");
+      --  eTeamNames[ii][5] = pcInfo.mhp;
+      --end
 
       return;
     end
@@ -342,11 +342,10 @@ function TBLEW_CHATREPORT()
   for i = 1, #eTeamNames do
     local targetJob = GetClassByType("Job", eTeamNames[i][2]);
     chatStrs[i] = string.format(
-      "[%d]:%s (%s 標準HP:%d, %s, %s)",
+      "[%d]%s(%s) %s %s",
       i,
       targetJob.Name,
       eTeamNames[i][1],
-      eTeamNames[i][5],
       eTeamNames[i][3],
       eTeamNames[i][4]
     );
