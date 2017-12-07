@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uiframe name="tblew" x="1160" y="8" width="268" height="266">
+	<frame snapclient="true" snapframe="true" layout_gravity="light top" margin="0 0 0 0"/>
+	<option visible="true" alwaysVisible="false" closebutton="true" useimageitem="true" autoopen="true" hideable="true"/>
+	<input hittest="true" movable="true" moveintitlebar="false" hittestframe="true"/>
+	<layer layerlevel="48"/>
+	<skin frameskin="none"/>
+	<draw drawnotitlebar="false" drawtitlebar="false" drawframe="true"/>
+	<sound opensound="sys_popup_open_1" closesound="character_item_window_close"/>
+	<controls>
+	</controls>
+</uiframe>
