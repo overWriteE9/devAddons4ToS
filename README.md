@@ -1,6 +1,7 @@
 # devAddons4ToS
 アドオン開発 for ToS
-# つかいかた
+
+## つかいかた
 各区分けの中のIPFフォルダに「xxxxx_crypted.ipf」が入ってるので、それらをDLして  
 「_xxxxx-☃-vX.X.ipf」に名前を変えてToSクライアントを終了させてから  
 ToSのdataフォルダ(addonフォルダではない)に突っ込んで、ToS起動
