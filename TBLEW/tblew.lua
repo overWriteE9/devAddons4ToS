@@ -1,7 +1,7 @@
 --アドオン名（大文字）
 local addonName = "TBLEW";
 local addonNameLower = string.lower(addonName);
-local addonVersion = "v0.3a";
+local addonVersion = "v0.4b";
 --作者名
 local author = "overWrite_e9";
 
@@ -32,13 +32,14 @@ if not g.loaded then
       y = 8
     },
     --表示透明度
-    alphaPercent = 20
+    alphaPercent = 20,
+    --チャットで報告機能
+    chatReport = false
   };
 end
 
 --グローバル記憶用変数
 local eTeamNames = {};
-local glbMyTeam = 0;
 local redrawFlag = false;
 
 --lua読み込み時のメッセージ
@@ -74,35 +75,24 @@ function TBLEW_ON_INIT(addon, frame)
   --設定ファイル保存処理
   TBLEW_SAVE_SETTINGS();
 
-  --TBLマップ以外では作動させない(邪魔なので)
-  if world.IsPVPMap() == false and g.settings.posset == false then
-    frame:ShowWindow(0);
-    return;
-  end
-
-  --メッセージ受信登録処理 : TBL内部プレイヤー情報の確定後に起動する
-  --addon:RegisterMsg("GAME_START_3SEC", "TBLEW_MAIN_ON_AFTER_RELOADPUBGAME");
-
   --コンテキストメニュー
   frame:SetEventScript(ui.RBUTTONDOWN, "TBLEW_CONTEXT_MENU");
 
   --ドラッグ
   frame:SetEventScript(ui.LBUTTONUP, "TBLEW_END_DRAG");
   
-  --再表示処理
-  if g.settings.enable then
-    frame:ShowWindow(1);
-  else
+  --TBLマップ以外では作動させない(邪魔なので)
+  if world.IsPVPMap() == false and g.settings.posset == false then
     frame:ShowWindow(0);
+    return;
+  else
+    TBLEW_MAIN();
   end
   
-  --Moveではうまくいかないので、OffSetを使用する…
-  frame:Move(0, 0);
-  frame:SetOffset(g.settings.position.x, g.settings.position.y);
 end
 
 --メイン処理
-function TBLEW_MAIN()  
+function TBLEW_MAIN()
   local frame = g.frame;
   
   --アドオンが無効状態なら、何もしない
@@ -112,11 +102,7 @@ function TBLEW_MAIN()
   end
 
   --再表示処理
-  if g.settings.enable then
-    frame:ShowWindow(1);
-  else
-    frame:ShowWindow(0);
-  end
+  frame:ShowWindow(1);
   
   --Moveではうまくいかないので、OffSetを使用する…
   frame:Move(0, 0);
@@ -124,6 +110,9 @@ function TBLEW_MAIN()
 
   --フレーム初期化処理
   TBLEW_INIT_FRAME(frame);
+  
+  --チャットで報告機能
+  TBLEW_CHATREPORT();
 end
 
 --フレーム描画
@@ -195,7 +184,6 @@ function TBLEW_INIT_FRAME(frame)
   --自分の名前(チーム名)のチェック用
   local myName = GETMYFAMILYNAME();
   local myTeam = 0;
-  glbMyTeam = 0;
   local enemyTeam = 0;
   
   --PVPゲームリストの上から参照し、自分の対戦相手を確認する
@@ -215,9 +203,11 @@ function TBLEW_INIT_FRAME(frame)
     local teamVec = {};
     teamVec[1] = info:CreateTeamInfo(1);
     teamVec[2] = info:CreateTeamInfo(2);
+
+    local memberCnt = math.min(teamVec[1]:GetCount(), teamVec[2]:GetCount());
     
     --チームメンバーの内容を確認
-    for j = 0, 2 do
+    for j = 0, memberCnt - 1 do
       local pcinfo1 = teamVec[1]:GetByIndex(j);
       local pcinfo2 = teamVec[2]:GetByIndex(j);
       local name1 = pcinfo1:GetFamilyName();
@@ -251,8 +241,10 @@ function TBLEW_INIT_FRAME(frame)
         CHAT_SYSTEM(string.format("team : my = %d ene = %d", myTeam, enemyTeam));
       end
       
+      local enemyCnt = teamVec[enemyTeam]:GetCount();
+
       --相手チームの情報から必要なものを取り出して表示
-      for j = 0, 2 do
+      for j = 0, enemyCnt - 1 do
         local pcinfo = teamVec[enemyTeam]:GetByIndex(j);
         local vsIcon = pcinfo.jobID;
         local vsTeamName = pcinfo:GetFamilyName();
@@ -287,7 +279,16 @@ function TBLEW_INIT_FRAME(frame)
         rtTeamName[jj]:SetText("{s17}{ol}" .. vsTeamName .. "{/}{/}");
         rtLvRank[jj]:SetText("{s17}" .. vsLevel .. vsRank .. "{/}");
         
-        eTeamNames[jj] = pcinfo:GetFamilyName();
+        eTeamNames[jj] = {};
+        eTeamNames[jj][1] = vsTeamName;
+        eTeamNames[jj][2] = vsIcon;
+        eTeamNames[jj][3] = vsLevel;
+        if pcinfo.rank == 0 then
+          eTeamNames[jj][4] = "ランク圏外";
+        else
+          eTeamNames[jj][4] = pcinfo.rank .. "位";
+        end
+        
       end
       
       --相手のMaxHPを取得して表示する
@@ -296,10 +297,10 @@ function TBLEW_INIT_FRAME(frame)
       local arycnt = teamList:size();
       for i = 0, arycnt - 1 do
         local pcInfo = teamList:at(i);
-        rtMaxHP[i + 1]:SetText("{s17}Std HP = {#FF9900}" .. pcInfo.mhp .. "{/}{/}");
+        local ii = i + 1;
+        rtMaxHP[ii]:SetText("{s17}Std HP = {#FF9900}" .. pcInfo.mhp .. "{/}{/}");
+        eTeamNames[ii][5] = pcInfo.mhp;
       end
-
-      glbMyTeam = myTeam;
 
       return;
     end
@@ -309,6 +310,53 @@ function TBLEW_INIT_FRAME(frame)
   if myTeam == 0 then
     rtInformation:SetText("{s15}{#FF0000}エラー：自分の名前がTBLリストに見当たらない{/}{/}");
     return;
+  end
+
+end
+
+--チャットで報告機能
+function TBLEW_CHATREPORT()
+  --相手チーム情報を取得できていないか、チャットで報告機能が無効なら何もしない
+  if #eTeamNames < 1 or g.settings.chatReport == false then
+    return;
+  end
+
+  --チャットで送信する文字列配列
+  local chatStrs = {};
+  chatStrs[1] = "失踪 (取得できません)";
+  chatStrs[2] = "失踪 (取得できません)";
+  chatStrs[3] = "失踪 (取得できません)";
+  chatStrs[4] = "失踪 (取得できません)";
+  chatStrs[5] = "失踪 (取得できません)";
+
+  --文字列を構成していく
+  for i = 1, #eTeamNames do
+    local targetJob = GetClassByType("Job", eTeamNames[i][2]);
+    chatStrs[i] = string.format(
+      "[%d]:%s (%s 標準HP:%d, %s, %s)",
+      i,
+      targetJob.Name,
+      eTeamNames[i][1],
+      eTeamNames[i][5],
+      eTeamNames[i][3],
+      eTeamNames[i][4]
+    );
+  end
+
+  --チャット送信(Party)
+  if #eTeamNames <= 3 then
+    ui.Chat(string.format(
+      "/p 【対戦相手の情報】{nl}%s{nl}%s{nl}%s",
+      chatStrs[1],
+      chatStrs[2],
+      chatStrs[3]
+    ));
+  elseif #eTeamNames > 3 then
+    local commitedChatStr = "/p 【対戦相手の情報】{nl}";
+    for i = 0, #eTeamNames do
+      commitedChatStr = commitedChatStr .. chatStrs[i] .. "{nl}";
+    end
+    ui.Chat(commitedChatStr);
   end
 
 end
@@ -339,7 +387,7 @@ function TBLEW_TOGGLE_FRAME()
     g.frame:ShowWindow(0);
   end
 
-  TBLEW_SAVESETTINGS();
+  TBLEW_SAVE_SETTINGS();
 end
 
 --自動表示有効化切り替え処理
@@ -347,13 +395,13 @@ function TBLEW_TOGGLE_ENABLED(enabled)
   if enabled then
     g.settings.enable = true;
     CHAT_SYSTEM(string.format("[%s] TBLEWを有効化しました, 次回参加時から自動表示", addonName));
-    TBLEW_SAVESETTINGS();
+    TBLEW_SAVE_SETTINGS();
     return;
   else
     g.settings.enable = false;
     CHAT_SYSTEM(string.format("[%s] TBLEWを無効化, /tew enableを発行するまで永続停止", addonName));
     g.frame:ShowWindow(0);
-    TBLEW_SAVESETTINGS();
+    TBLEW_SAVE_SETTINGS();
     return;
   end
 end
@@ -372,7 +420,7 @@ end
 function TBLEW_END_DRAG()
   g.settings.position.x = g.frame:GetX();
   g.settings.position.y = g.frame:GetY();
-  TBLEW_SAVESETTINGS();
+  TBLEW_SAVE_SETTINGS();
 end
 
 --チャットコマンド処理 /tew
@@ -380,7 +428,7 @@ function TBLEW_PROCESS_COMMAND_TEW(command)
   local cmd = "";
 
   if #command > 0 then
-    cmd = table.remove(command, 1);
+    cmd = string.lower(table.remove(command, 1));
   else
     local msg1 = "TBL enemy who?{nl}    /tew show, /tew on … 表示する{nl}    /tew hide, /tew off … 非表示にする";
     local msg2 = "{nl}    /tew enable … アドオン有効化{nl}    /tew disable … アドオン無効化";
@@ -390,9 +438,12 @@ function TBLEW_PROCESS_COMMAND_TEW(command)
   end
 
   if cmd == "show" or cmd == "on" then
+    --描画のみ行う
+    redrawFlag = true;
+    --フレーム描画
+    TBLEW_MAIN();
     --表示
     CHAT_SYSTEM(string.format("[%s] TBLEWを表示しました", addonName));
-    g.frame:ShowWindow(1);
     return;
   elseif cmd == "hide" or cmd == "off" then
     --非表示
@@ -416,14 +467,14 @@ function TBLEW_PROCESS_COMMAND_TEW(command)
     --フレーム描画
     TBLEW_MAIN();
     CHAT_SYSTEM(string.format("[%s] 位置調整強制表示機能ON", addonName));
-    TBLEW_SAVESETTINGS();
+    TBLEW_SAVE_SETTINGS();
     return;
   elseif cmd == "posfix" or cmd == "fixpos" then
     --位置調整のための強制表示フラグOFF
     g.settings.posset = false;
     CHAT_SYSTEM(string.format("[%s] 位置調整強制表示機能OFF", addonName));
     g.frame:ShowWindow(0);
-    TBLEW_SAVESETTINGS();
+    TBLEW_SAVE_SETTINGS();
     return;
   elseif cmd == "reload" then
     TBLEW_MAIN_ON_AFTER_RELOADPUBGAME();
@@ -436,7 +487,7 @@ function TBLEW_PROCESS_COMMAND_TEW(command)
       g.settings.debuggy = false;
       CHAT_SYSTEM(string.format("[%s] デバッグモードOFFにしました", addonName));
     end
-    TBLEW_SAVESETTINGS();
+    TBLEW_SAVE_SETTINGS();
     return;
   end
 
@@ -447,10 +498,28 @@ function TBLEW_PROCESS_COMMAND_TEW(command)
     if alpha ~= nil then
       --値を10～90の範囲に
       g.settings.alphaPercent = math.max(math.min(alpha, 90), 10);
+      CHAT_SYSTEM(string.format("[%s] 透過値を %s に設定しました", addonName, g.settings.alphaPercent));
+      TBLEW_SAVE_SETTINGS();
       --描画のみ行う
       redrawFlag = true;
       --フレーム描画
       TBLEW_MAIN();
+      return;
+    end
+  end
+  
+  --チャットで報告機能
+  if cmd == "report" or cmd == "chat" then
+    cmd = table.remove(command, 1);
+    if cmd == "on" then
+      g.settings.chatReport = true;
+      TBLEW_SAVE_SETTINGS();
+      CHAT_SYSTEM(string.format("[%s] チャットで報告機能をONにしました", addonName));
+      return;
+    elseif cmd == "off" then
+      g.settings.chatReport = false;
+      TBLEW_SAVE_SETTINGS();
+      CHAT_SYSTEM(string.format("[%s] チャットで報告機能をOFFにしました", addonName));
       return;
     end
   end
@@ -536,7 +605,7 @@ function TBLEW_PROCESS_COMMAND_MMM(command)
     local memCount = #eTeamNames;
     local msgMembers = "";
     for i = 1, memCount do
-      msgMembers = msgMembers .. "[" .. (i + 5) .. "] : " .. eTeamNames[i] .. "{nl}";
+      msgMembers = msgMembers .. "[" .. (i + 5) .. "] : " .. eTeamNames[i][1] .. "{nl}";
     end
     
     --指定した番号の相手の情報が無い場合は終了
@@ -546,7 +615,7 @@ function TBLEW_PROCESS_COMMAND_MMM(command)
       return;
     end
     
-    ui.Chat("/memberinfo " .. eTeamNames[num]);
+    ui.Chat("/memberinfo " .. eTeamNames[num][1]);
     
   end
   
@@ -559,7 +628,7 @@ end
 ----------------------------------------------------------------
 
 function TBLEW_MAIN_ON_AFTER_RELOADPUBGAME()
-  --公開ゲームリストの取得(0.5秒ごとに5回まで読み直す)
+  --公開ゲームリストの取得
   TBLEW_REQ_PUB_LIST();
   
   --メイン処理を呼ぶ
