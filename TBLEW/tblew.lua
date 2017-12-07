@@ -1,7 +1,7 @@
 --アドオン名（大文字）
 local addonName = "TBLEW";
 local addonNameLower = string.lower(addonName);
-local addonVersion = "v0.4c";
+local addonVersion = "v0.4e";
 --作者名
 local author = "overWrite_e9";
 
@@ -22,8 +22,6 @@ if not g.loaded then
   g.settings = {
     --有効/無効
     enable = true,
-    --位置調整用
-    posset = false,
     --デバッグ用
     debuggy = false,
     --フレーム表示場所
@@ -47,7 +45,17 @@ local shutChat = false;
 CHAT_SYSTEM(string.format("%s.lua is loaded", addonName));
 
 function TBLEW_SAVE_SETTINGS()
-  acutil.saveJSON(g.settingsFileLoc, g.settings);
+  local t, err = acutil.saveJSON(g.settingsFileLoc, g.settings);
+--[[
+  if err then
+    CHAT_SYSTEM(string.format(
+      "[%s] %s を開くことができません{nl}" ..
+      "  Hint: ToSインストールフォルダ下のaddonsフォルダに{nl}" ..
+      "  %s という名前のフォルダを作成すると設定ファイルが作成されるかも",
+      addonName, g.settingsFileLoc, addonNameLower
+    ));
+  end
+]]
 end
 
 --マップ読み込み時処理（1度だけ）
@@ -65,13 +73,22 @@ function TBLEW_ON_INIT(addon, frame)
     local t, err = acutil.loadJSON(g.settingsFileLoc, g.settings);
     if err then
       --設定ファイル読み込み失敗時処理
-      CHAT_SYSTEM(string.format("[%s] cannot load setting files", addonName));
+      CHAT_SYSTEM(string.format(
+        "[%s] %s を開くことができません{nl}" ..
+        "  Hint: ToSインストールフォルダ下の addons フォルダに{nl}" ..
+        "  %s という名前のフォルダを作成すると設定ファイルが作成されるかも",
+        addonName, g.settingsFileLoc, addonNameLower
+      ));
     else
       --設定ファイル読み込み成功時処理
       g.settings = t;
     end
     g.loaded = true;
   end
+    
+  --Moveではうまくいかないので、OffSetを使用する…
+  frame:Move(0, 0);
+  frame:SetOffset(g.settings.position.x, g.settings.position.y);
 
   --設定ファイル保存処理
   TBLEW_SAVE_SETTINGS();
@@ -83,7 +100,7 @@ function TBLEW_ON_INIT(addon, frame)
   frame:SetEventScript(ui.LBUTTONUP, "TBLEW_END_DRAG");
   
   --TBLマップ以外では作動させない(邪魔なので)
-  if world.IsPVPMap() == false and g.settings.posset == false then
+  if world.IsPVPMap() == false then
     frame:ShowWindow(0);
     return;
   else
@@ -171,11 +188,9 @@ function TBLEW_INIT_FRAME(frame)
   --rtMaxHP[3]:SetText("{s17}Std HP = {#FF9900}12768{/}{/}");
   rtInformation:SetText("{s15}" .. addonName .. " " .. addonVersion .. "{nl}yourTeamName: " .. GETMYFAMILYNAME() .. "{/}");
   
-  --描画のみのフラグが立っていたらここまでで終了(possetの場合はフラグを解除しない)
+  --描画のみのフラグが立っていたらここまでで終了
   if redrawFlag == true then
-    if g.settings.posset == false then
-      redrawFlag = false;
-    end
+    redrawFlag = false;
     return;
   end
   
@@ -434,11 +449,14 @@ function TBLEW_PROCESS_COMMAND_TEW(command)
   if #command > 0 then
     cmd = string.lower(table.remove(command, 1));
   else
-    local msg1 = "TBL enemy who?{nl}    /tew show, /tew on … 表示する{nl}    /tew hide, /tew off … 非表示にする";
-    local msg2 = "{nl}    /tew enable … アドオン有効化{nl}    /tew disable … アドオン無効化";
-    local msg3 = "{nl}    ※無効化すると、/tew enableを発行するまでTBL中でも表示されなくなる{nl}    ※位置調整は一般MAPで/tew posset→/tew posfixするとやりやすい";
-    local msg4 = "{nl}    /tew alpha 透明度[%] … フレーム表示透過設定 10％～90％の範囲(初期値20％)";
-    return ui.MsgBox(msg1 .. msg2 .. msg3 .. msg4,"","Nope");
+    local msg =
+      "TBL enemy who?{nl}    /tew show, /tew on … 表示する{nl}" ..
+      "    /tew hide, /tew off … 非表示にする{nl}" ..
+      "    /tew enable … アドオン有効化{nl}    /tew disable … アドオン無効化{nl}" ..
+      "    ※無効化すると、/tew enableを発行するまでTBL中でも表示されなくなる{nl}" ..
+      "    ※位置調整は一般MAPで/tew show→ドラッグ→/tew hideするとやりやすい{nl}" ..
+      "    /tew alpha 透明度[%] … フレーム表示透過設定 10％～90％の範囲(初期値20％)";
+    CHAT_SYSTEM(msg);
   end
 
   if cmd == "show" or cmd == "on" then
@@ -461,24 +479,6 @@ function TBLEW_PROCESS_COMMAND_TEW(command)
   elseif cmd == "disable" then
     --無効化
     TBLEW_TOGGLE_ENABLED(false);
-    return;
-  elseif cmd == "posset" or cmd == "setpos" then
-    --位置調整のための強制表示フラグON
-    g.settings.posset = true;
-    g.settings.enable = true;
-    --描画のみ行う
-    redrawFlag = true;
-    --フレーム描画
-    TBLEW_MAIN();
-    CHAT_SYSTEM(string.format("[%s] 位置調整強制表示機能ON", addonName));
-    TBLEW_SAVE_SETTINGS();
-    return;
-  elseif cmd == "posfix" or cmd == "fixpos" then
-    --位置調整のための強制表示フラグOFF
-    g.settings.posset = false;
-    CHAT_SYSTEM(string.format("[%s] 位置調整強制表示機能OFF", addonName));
-    g.frame:ShowWindow(0);
-    TBLEW_SAVE_SETTINGS();
     return;
   elseif cmd == "reload" then
     TBLEW_MAIN_ON_AFTER_RELOADPUBGAME();
@@ -528,13 +528,15 @@ function TBLEW_PROCESS_COMMAND_TEW(command)
     end
   end
   
-  CHAT_SYSTEM(string.format("[%s] Invalid Command -> [%s], %d", addonName, command, #command));
-  local msg1 = "TBL enemy who?{nl}    /tew show, /tew on … 表示する{nl}    /tew hide, /tew off … 非表示にする";
-  local msg2 = "{nl}    /tew enable … アドオン有効化{nl}    /tew disable … アドオン無効化";
-  local msg3 = "{nl}    ※無効化すると、/tew enableを発行するまでTBL中でも表示されなくなる";
-  local msg4 = "{nl}    /tew posset … 位置調整用フラグON{nl}    /tew posfix … 位置調整用フラグOFF{nl}    ※位置調整は一般MAPで/tew posset→/tew posfixするとやりやすい";
-  local msg5 = "{nl}    /tew alpha 透明度[%] … フレーム表示透過設定 10％～90％の範囲(初期値20％)";
-  CHAT_SYSTEM(msg1 .. msg2 .. msg3 .. msg4 .. msg5);
+  CHAT_SYSTEM(string.format("[%s] Invalid Command", addonName));
+  local msg =
+    "TBL enemy who?{nl}    /tew show, /tew on … 表示する{nl}" ..
+    "    /tew hide, /tew off … 非表示にする{nl}" ..
+    "    /tew enable … アドオン有効化{nl}    /tew disable … アドオン無効化{nl}" ..
+    "    ※無効化すると、/tew enableを発行するまでTBL中でも表示されなくなる{nl}" ..
+    "    ※位置調整は一般MAPで/tew show→ドラッグ→/tew hideするとやりやすい{nl}" ..
+    "    /tew alpha 透明度[%] … フレーム表示透過設定 10％～90％の範囲(初期値20％)";
+  CHAT_SYSTEM(msg);
 end
 
 --チャットコマンド処理 /mmm
@@ -544,24 +546,24 @@ function TBLEW_PROCESS_COMMAND_MMM(command)
   if #command > 0 then
     cmd = table.remove(command, 1);
   else
-    local msg1 = "[TBL enemy who?]{nl}    /mmm 1～5 ・・・ チームの装備確認{nl}    /mmm 6～10 ・・・ 相手チームの装備確認";
-    CHAT_SYSTEM(msg1);
+    local msg = "[TBL enemy who?]{nl}    /mmm 1～5 ・・・ チームの装備確認{nl}    /mmm 6～10 ・・・ 相手チームの装備確認";
+    CHAT_SYSTEM(msg);
     return;
   end
 
   local num = tonumber(cmd);
 
   if num == nil then
-    local msg1 = "[TBL enemy who?]{nl}    /mmm 1～5 ・・・ チームの装備確認{nl}    /mmm 6～10 ・・・ 相手チームの装備確認";
-    CHAT_SYSTEM(msg1);
+    local msg = "[TBL enemy who?]{nl}    /mmm 1～5 ・・・ チームの装備確認{nl}    /mmm 6～10 ・・・ 相手チームの装備確認";
+    CHAT_SYSTEM(msg);
     return;
   end
   
   --Partyメンバーがいない場合何もしない
   local myParty = session.party.GetPartyInfo();
   if myParty == nil then
-    local msg1 = "[TBL enemy who?]パーティーメンバーが存在しません";
-    CHAT_SYSTEM(msg1);
+    local msg = "[TBL enemy who?]パーティーメンバーが存在しません";
+    CHAT_SYSTEM(msg);
     return;
   end
 
@@ -572,8 +574,8 @@ function TBLEW_PROCESS_COMMAND_MMM(command)
     local memCount = memList:Count();
     
     if memCount < 1 then
-      local msg1 = "[TBL enemy who?]パーティーメンバーが存在しません";
-      CHAT_SYSTEM(msg1);
+      local msg = "[TBL enemy who?]パーティーメンバーが存在しません";
+      CHAT_SYSTEM(msg);
       return;
     end
     
@@ -586,8 +588,8 @@ function TBLEW_PROCESS_COMMAND_MMM(command)
     
     --指定した番号の情報が無い場合は終了
     if memCount < num or num < 1 then
-      local msg1 = "[TBL enemy who?]指定された番号 [" .. num .. "] のメンバーは存在しないか取得できていません{nl}";
-      CHAT_SYSTEM(msg1 .. msgMembers);
+      local msg = "[TBL enemy who?]指定された番号 [" .. num .. "] のメンバーは存在しないか取得できていません{nl}";
+      CHAT_SYSTEM(msg .. msgMembers);
       return;
     end
     
@@ -600,8 +602,8 @@ function TBLEW_PROCESS_COMMAND_MMM(command)
     num = num - 5;
     
     if #eTeamNames < 1 then
-      local msg1 = "[TBL enemy who?]相手パーティーメンバーが取得できていません";
-      CHAT_SYSTEM(msg1);
+      local msg = "[TBL enemy who?]相手パーティーメンバーが取得できていません";
+      CHAT_SYSTEM(msg);
       return;
     end
     
@@ -614,8 +616,8 @@ function TBLEW_PROCESS_COMMAND_MMM(command)
     
     --指定した番号の相手の情報が無い場合は終了
     if #eTeamNames < num then
-      local msg1 = "[TBL enemy who?]指定された番号 [" .. (num + 5) .. "] の相手メンバーは存在しないか取得できていません";
-      CHAT_SYSTEM(msg1 .. msgMembers);
+      local msg = "[TBL enemy who?]指定された番号 [" .. (num + 5) .. "] の相手メンバーは存在しないか取得できていません";
+      CHAT_SYSTEM(msg .. msgMembers);
       return;
     end
     
