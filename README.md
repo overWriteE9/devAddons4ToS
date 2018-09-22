@@ -41,6 +41,12 @@ TBLの中で敵の情報を見るとき、「F4」おしてTBLのアイコン押
 
 ***
 
+### developerconsole2 (developerconsole私的改良版)
+基本的にはdeveloperconsoleと同一。
+違う部分は、コマンド実行履歴(unixのヒストリーのようなもの)を300行保存して、あとから呼び出せるようにしてること。
+
+***
+
 ### zoomyplus for TBL
 3on3のTBLが実装されて、縮小表示して画面一望できる！と思いきやzoomy入れてるとできないことが発覚  
 zoomyのアドオンをいちいちdataフォルダから消して、一般MAPでは元に戻すってのがメンドかったので  
