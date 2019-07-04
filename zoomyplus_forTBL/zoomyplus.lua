@@ -7,7 +7,7 @@ local zplusSwitch = 1
 CHAT_SYSTEM("Zoomy Plus loaded! Help: /zplus help");
 
 function ZOOMYPLUS_ON_INIT(addon, frame)
-	if(world.IsPVPMap() == true) then
+	if world.IsPVPMap() == true or (session.GetCurrentMapProp()):GetClassName() == "pvp_Mine" or session.colonywar.GetIsColonyWarMap() then
 		frame:ShowWindow(0);
 		return;
 	else
