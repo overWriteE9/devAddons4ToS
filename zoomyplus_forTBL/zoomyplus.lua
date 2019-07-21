@@ -1,30 +1,45 @@
--- Functions ZOOMY_CLAMP(), ZOOMY_IN(), ZOOMY_OUT(), and the "Zoomy" name are taken from Excrulon's Zoomy v1.0.0 addon.
+-- Origin: ZOOMYPLUS v1.0.0
 _G["ZOOMYPLUS"] = {};
 local acutil = require("acutil");
-local zplusTimer = imcTime.GetAppTime()
-local zplusTimeElapsed = 0
-local zplusSwitch = 1
-CHAT_SYSTEM("Zoomy Plus loaded! Help: /zplus help");
+local zplusTimer = imcTime.GetAppTime();
+local zplusTimeElapsed = 0;
+local zplusSwitch = 1;
 
 function ZOOMYPLUS_ON_INIT(addon, frame)
-	if world.IsPVPMap() == true or (session.GetCurrentMapProp()):GetClassName() == "pvp_Mine" or session.colonywar.GetIsColonyWarMap() then
+	acutil.slashCommand("/zplus",ZOOMYPLUS_CMD);
+	acutil.slashCommand("/zzz",ZOOMYPLUS_CMD);
+	
+	if world.IsPVPMap() == true then
 		frame:ShowWindow(0);
 		return;
-	else
-		ZOOMYPLUS_LOADSETTINGS();
-		frame:ShowWindow(1);
-		frame:RunUpdateScript("ZOOMY_KEYPRESS", 0, 0, 0, 1);
-		addon:RegisterMsg("FPS_UPDATE", "ZOOMYPLUS_UPDATE");
-		acutil.slashCommand("/zplus",ZOOMYPLUS_CMD);
-		if currentZoom == nil or currentZoom == "" then
-			currentZoom = 236;
+	end
+	
+	local thisMapName = (session.GetCurrentMapProp()):GetClassName();
+	if string.find(thisMapName, "pvp_", 1, true) or string.find(thisMapName, "GuildColony_", 1, true) then
+		frame:ShowWindow(0);
+		return;
+	end
+	
+	ZOOMYPLUS_LOADSETTINGS();
+	
+	for inum,ival in ipairs(_G["ZOOMYPLUS"]["settings"].dismaps) do
+		if ival == thisMapName then
+			frame:ShowWindow(0);
+			return;
 		end
-		if currentX == nil or currentX == "" then
-			currentX = 45;
-		end
-		if currentY == nil or currentY == "" then
-			currentY = 38;
-		end
+	end
+	
+	frame:ShowWindow(1);
+	frame:RunUpdateScript("ZOOMY_KEYPRESS", 0, 0, 0, 1);
+	addon:RegisterMsg("FPS_UPDATE", "ZOOMYPLUS_UPDATE");
+	if currentZoom == nil or currentZoom == "" then
+		currentZoom = 375;
+	end
+	if currentX == nil or currentX == "" then
+		currentX = 45;
+	end
+	if currentY == nil or currentY == "" then
+		currentY = 38;
 	end
 end
 
@@ -44,6 +59,18 @@ function ZOOMYPLUS_SAVESETTINGS()
 			displayX = 510;
 			displayY = 880;
 			lock = 1;
+			dismaps = {
+				"GuildColony_f_pilgrimroad_49",
+				"GuildColony_f_farm_47_2",
+				"GuildColony_f_siauliai_47_4"
+			};
+		};
+	end
+	if _G["ZOOMYPLUS"]["settings"].dismaps == nil then
+		_G["ZOOMYPLUS"]["settings"].dismaps = {
+			"GuildColony_f_pilgrimroad_49",
+			"GuildColony_f_farm_47_2",
+			"GuildColony_f_siauliai_47_4"
 		};
 	end
 	acutil.saveJSON("../addons/zoomyplus/settings.json", _G["ZOOMYPLUS"]["settings"]);
@@ -61,7 +88,7 @@ function ZOOMYPLUS_CMD(command)
 	if #command > 0 then
         cmd = table.remove(command, 1);
     else
-		CHAT_SYSTEM("Invalid command. Available commands:{nl}/zplus help{nl}/zplus zoom <num>{nl}/zplus swap <num1> <num2>{nl}/zplus switch <num1> <num2>{nl}/zplus rotate <x> <y>{nl}/zplus reset{nl}/zplus reset xy{nl}/zplus display{nl}/zplus lock{nl}/zplus default");
+		CHAT_SYSTEM("Invalid command. Available commands:{nl}/zplus help{nl}/zplus zoom <num>{nl}/zplus swap <num1> <num2>{nl}/zplus switch <num1> <num2>{nl}/zplus rotate <x> <y>{nl}/zplus reset{nl}/zplus reset xy{nl}/zplus display{nl}/zplus lock{nl}/zplus default{nl}/zplus = /zzz:aliases");
         return;
     end
 	if cmd == "help" then
@@ -176,6 +203,27 @@ function ZOOMYPLUS_CMD(command)
 		end
 		return;
 	end
+	if cmd == "dismap" then
+		local thisMapName = (session.GetCurrentMapProp()):GetClassName();
+		if _G["ZOOMYPLUS"]["settings"].dismaps == nil then
+			_G["ZOOMYPLUS"]["settings"].dismaps = {"pvp_Mine", "gvg_Mine"};
+		end
+		local deletedF = false;
+		for inum,ival in ipairs(_G["ZOOMYPLUS"]["settings"].dismaps) do
+			if ival == thisMapName then
+				table.remove(_G["ZOOMYPLUS"]["settings"].dismaps, inum);
+				deletedF = true;
+				
+				CHAT_SYSTEM("[addon:ZOOMYPLUS]: [" .. thisMapName .. "] REMOVED on disabled maplist.");
+			end
+		end
+		if deletedF == false then
+			table.insert(_G["ZOOMYPLUS"]["settings"].dismaps, thisMapName);
+			CHAT_SYSTEM("[addon:ZOOMYPLUS]: [" .. thisMapName .. "] INSERTED on disabled maplist.");
+		end
+		ZOOMYPLUS_SAVESETTINGS();
+		return;
+	end
 	if cmd == "default" then
 		_G["ZOOMYPLUS"]["settings"].displayX = 510;
 		_G["ZOOMYPLUS"]["settings"].displayY = 880;
@@ -189,6 +237,7 @@ function ZOOMYPLUS_CMD(command)
 		ZOOMYPLUS_SAVESETTINGS();
 		return;
 	end
+	
 	CHAT_SYSTEM("Invalid command. Available commands:{nl}/zplus help{nl}/zplus zoom <num>{nl}/zplus swap <num1> <num2>{nl}/zplus switch <num1> <num2>{nl}/zplus rotate <x> <y>{nl}/zplus reset{nl}/zplus reset xy{nl}/zplus display{nl}/zplus lock{nl}/zplus default");
 	return;
 end
