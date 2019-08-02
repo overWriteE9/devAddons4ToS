@@ -49,6 +49,13 @@ function ZOOMYPLUS_LOADSETTINGS()
 		ZOOMYPLUS_SAVESETTINGS();
 	else
 		_G["ZOOMYPLUS"]["settings"] = settings;
+		if _G["ZOOMYPLUS"]["settings"].dismaps == nil then
+			_G["ZOOMYPLUS"]["settings"].dismaps = {};
+			_G["ZOOMYPLUS"]["settings"].dismaps[1] = "GuildColony_f_pilgrimroad_49";
+			_G["ZOOMYPLUS"]["settings"].dismaps[2] = "GuildColony_f_farm_47_2";
+			_G["ZOOMYPLUS"]["settings"].dismaps[3] = "GuildColony_f_siauliai_47_4";
+			ZOOMYPLUS_SAVESETTINGS();
+		end
 	end
 end
 
@@ -67,11 +74,10 @@ function ZOOMYPLUS_SAVESETTINGS()
 		};
 	end
 	if _G["ZOOMYPLUS"]["settings"].dismaps == nil then
-		_G["ZOOMYPLUS"]["settings"].dismaps = {
-			"GuildColony_f_pilgrimroad_49",
-			"GuildColony_f_farm_47_2",
-			"GuildColony_f_siauliai_47_4"
-		};
+		_G["ZOOMYPLUS"]["settings"].dismaps = {};
+		_G["ZOOMYPLUS"]["settings"].dismaps[1] = "GuildColony_f_pilgrimroad_49";
+		_G["ZOOMYPLUS"]["settings"].dismaps[2] = "GuildColony_f_farm_47_2";
+		_G["ZOOMYPLUS"]["settings"].dismaps[3] = "GuildColony_f_siauliai_47_4";
 	end
 	acutil.saveJSON("../addons/zoomyplus/settings.json", _G["ZOOMYPLUS"]["settings"]);
 end
